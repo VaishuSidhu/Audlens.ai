@@ -1,0 +1,138 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-glow: var(--primary-glow);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* Dark futuristic palette - applied at :root so dark is the default */
+  --background: oklch(0.14 0.03 270);
+  --foreground: oklch(0.97 0.01 270);
+
+  --card: oklch(0.18 0.035 270);
+  --card-foreground: oklch(0.97 0.01 270);
+
+  --popover: oklch(0.18 0.035 270);
+  --popover-foreground: oklch(0.97 0.01 270);
+
+  --primary: oklch(0.62 0.22 270); /* vivid purple */
+  --primary-foreground: oklch(0.99 0 0);
+  --primary-glow: oklch(0.68 0.2 240); /* electric blue */
+
+  --secondary: oklch(0.24 0.04 270);
+  --secondary-foreground: oklch(0.97 0.01 270);
+
+  --muted: oklch(0.22 0.03 270);
+  --muted-foreground: oklch(0.7 0.03 270);
+
+  --accent: oklch(0.28 0.08 270);
+  --accent-foreground: oklch(0.97 0.01 270);
+
+  --destructive: oklch(0.62 0.24 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --success: oklch(0.7 0.18 150);
+  --success-foreground: oklch(0.12 0.02 150);
+
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.62 0.22 270);
+
+  --gradient-primary: linear-gradient(135deg, oklch(0.62 0.22 270), oklch(0.68 0.2 240));
+  --gradient-hero:
+    radial-gradient(ellipse at top, oklch(0.62 0.22 270 / 0.25), transparent 60%),
+    radial-gradient(ellipse at bottom right, oklch(0.68 0.2 240 / 0.18), transparent 60%);
+  --shadow-glow: 0 0 40px -10px oklch(0.62 0.22 270 / 0.6);
+  --shadow-elegant: 0 20px 60px -20px oklch(0.05 0.02 270 / 0.8);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+    color-scheme: dark;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      "Inter",
+      sans-serif;
+    background-image: var(--gradient-hero);
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  .shadow-elegant {
+    box-shadow: var(--shadow-elegant);
+  }
+}
+
+@keyframes pulse-bar {
+  0%,
+  100% {
+    transform: scaleY(0.4);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+.animate-pulse-bar {
+  animation: pulse-bar 1s ease-in-out infinite;
+}
