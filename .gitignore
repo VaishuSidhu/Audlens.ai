@@ -39,9 +39,9 @@ venv/
 .env
 
 # Project specific
-model/data/
-model/models/*.h5
-model/models/*.keras
-model/images_generated/
-model/reports_generated/
-.cache/
+# model/data/
+# model/models/*.h5
+# model/models/*.keras
+# model/images_generated/
+# model/reports_generated/
+# .cache/
