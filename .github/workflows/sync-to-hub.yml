@@ -14,25 +14,27 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
+          # 1. Setup Identity
           git config --global user.email "vaishusidhu@gmail.com"
           git config --global user.name "VaishuSidhu"
+          git config --global init.defaultBranch main
           
-          # Create a temp folder outside the workspace
+          # 2. Create a clean temporary directory
           TEMP_DIR=$(mktemp -d)
           cp -r $GITHUB_WORKSPACE/* $TEMP_DIR/
           cd $TEMP_DIR
           
-          # Remove heavy folders and git history
+          # 3. Strip out everything we don't want to upload
           rm -rf .git
           rm -rf model/data
           rm -rf node_modules
           
-          # Initialize as 'main' and push
+          # 4. Create a fresh project specifically named 'main'
           git init
           git checkout -b main
           git add .
-          git commit -m "Production Deployment"
+          git commit -m "Official Production Build"
           
-          # Force push to Hugging Face
+          # 5. Push to Hugging Face
           git remote add hf https://x-token:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/Vaishusid/Audlens
           git push --force hf main
