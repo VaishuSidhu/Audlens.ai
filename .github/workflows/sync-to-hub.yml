@@ -10,13 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Install Hugging Face Hub
-        run: pip install huggingface_hub
-
       - name: Upload to Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # Use the official CLI to upload only the necessary folders
-          # We skip 'model/data' by just not including it in the upload list
-          huggingface-cli upload Vaishusid/Audlens . . --repo-type=space --token=$HF_TOKEN --exclude "model/data/*" "node_modules/*" ".git/*"
+          # The new 'hf' tool is pre-installed on the runner
+          # We use it to upload the current directory to the Space
+          # We ignore the data folder to keep it light
+          hf upload Vaishusid/Audlens . . --repo-type space --token $HF_TOKEN --exclude "model/data/*" "node_modules/*" ".git/*"
