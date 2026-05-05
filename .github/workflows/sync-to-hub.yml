@@ -8,10 +8,9 @@ jobs:
   sync-to-hub:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          lfs: true
 
       - name: Push to hub
         env:
@@ -20,8 +19,10 @@ jobs:
           git config --global user.email "vaishusidhu@gmail.com"
           git config --global user.name "VaishuSidhu"
           
-          # Clean up the local repo for the sync (remove large data files just for this push)
+          # Create a temporary clean branch without the data folder
+          git checkout --orphan temp_sync
           git rm -r --cached model/data || true
+          git commit -m "Clean deployment for HF"
           
           git remote add hf https://x-token:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/Vaishusid/Audlens
-          git push --force hf main
+          git push --force hf temp_sync:main
