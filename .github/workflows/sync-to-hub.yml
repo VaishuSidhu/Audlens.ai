@@ -9,20 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      
+      - name: Install Hugging Face Hub
+        run: pip install huggingface_hub
 
-      - name: Push to hub
+      - name: Upload to Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          git config --global user.email "vaishusidhu@gmail.com"
-          git config --global user.name "VaishuSidhu"
-          
-          # Create a temporary clean branch without the data folder
-          git checkout --orphan temp_sync
-          git rm -r --cached model/data || true
-          git commit -m "Clean deployment for HF"
-          
-          git remote add hf https://x-token:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/Vaishusid/Audlens
-          git push --force hf temp_sync:main
+          # Use the official CLI to upload only the necessary folders
+          # We skip 'model/data' by just not including it in the upload list
+          huggingface-cli upload Vaishusid/Audlens . . --repo-type=space --token=$HF_TOKEN --exclude "model/data/*" "node_modules/*" ".git/*"
