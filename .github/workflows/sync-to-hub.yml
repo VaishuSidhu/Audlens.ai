@@ -10,11 +10,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Upload to Hugging Face
+      - name: Clean Sync
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # The new 'hf' tool is pre-installed on the runner
-          # We use it to upload the current directory to the Space
-          # We ignore the data folder to keep it light
-          hf upload Vaishusid/Audlens . . --repo-type space --token $HF_TOKEN --exclude "model/data/*" "node_modules/*" ".git/*"
+          # 1. Setup Git
+          git config --global user.email "vaishusidhu@gmail.com"
+          git config --global user.name "VaishuSidhu"
+          
+          # 2. Create a fresh temporary directory for the clean version
+          mkdir clean_repo
+          cp -r . clean_repo/
+          cd clean_repo
+          
+          # 3. Remove the heavy data and git history
+          rm -rf .git
+          rm -rf model/data
+          rm -rf node_modules
+          
+          # 4. Initialize a brand new git repo and push
+          git init
+          git add .
+          git commit -m "Deployment Sync"
+          git remote add hf https://x-token:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/Vaishusid/Audlens
+          git push --force hf master:main
