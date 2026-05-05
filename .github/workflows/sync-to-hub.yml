@@ -17,19 +17,22 @@ jobs:
           git config --global user.email "vaishusidhu@gmail.com"
           git config --global user.name "VaishuSidhu"
           
-          # Use a temporary directory
+          # Create a temp folder outside the workspace
           TEMP_DIR=$(mktemp -d)
           cp -r $GITHUB_WORKSPACE/* $TEMP_DIR/
           cd $TEMP_DIR
           
-          # Remove heavy files and git history
+          # Remove heavy folders and git history
           rm -rf .git
           rm -rf model/data
           rm -rf node_modules
           
-          # Initialize fresh and push
-          git init -b main
+          # Initialize as 'main' and push
+          git init
+          git checkout -b main
           git add .
-          git commit -m "Deployment Sync"
+          git commit -m "Production Deployment"
+          
+          # Force push to Hugging Face
           git remote add hf https://x-token:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/Vaishusid/Audlens
           git push --force hf main
