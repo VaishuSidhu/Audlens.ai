@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+python-multipart
+tensorflow-cpu
+librosa
+soundfile
+numpy
+reportlab
+matplotlib
+scikit-learn
+transformers
+torch

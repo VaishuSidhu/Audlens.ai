@@ -10,22 +10,33 @@ from reportlab.graphics.charts.barcharts import HorizontalBarChart
 
 def get_forensic_explanation(result: dict) -> str:
     prediction = result['prediction'].upper()
-    is_fake = prediction in ["FAKE", "POTENTIALLY MODIFIED"]
     
     artifact_intensity = result.get('forensics', {}).get('cnn_score', 0) * 100
     vocal_humanity = result.get('forensics', {}).get('frequency_score', 0) * 100
 
-    if is_fake:
+    if prediction == "FAKE":
         reason = f"<b>FORENSIC VERDICT: SYNTHETIC (AI-GENERATED)</b><br/><br/>"
-        reason += f"<b>Explanation:</b> The system identified high-probability synthetic signatures within the audio stream.<br/>"
-        reason += f"<b>Vocal Humanity Score:</b> {vocal_humanity:.1f}% (LOW). The semantic branch detected unnatural prosody and physiological inconsistencies.<br/>"
-        reason += f"<b>Spectral Artifacts:</b> {artifact_intensity:.1f}% (HIGH). Evidence of neural upsampling noise and checkerboard artifacts typical of GAN/Diffusion vocoders."
+        reason += f"<b>Explanation:</b> The system identified high-probability synthetic signatures throughout the audio.<br/>"
+        reason += f"<b>Vocal Humanity Score:</b> {vocal_humanity:.1f}% (LOW). The semantic branch detected unnatural prosody and inconsistencies.<br/>"
+        reason += f"<b>Spectral Artifacts:</b> {artifact_intensity:.1f}% (HIGH). Evidence of neural vocoder noise patterns detected."
+        return reason
+    elif prediction == "HYBRID":
+        reason = f"<b>FORENSIC VERDICT: HYBRID (MIXED CONTENT)</b><br/><br/>"
+        reason += f"<b>Explanation:</b> The audio contains both authentic human speech and AI-generated segments.<br/>"
+        reason += f"<b>Vocal Humanity Score:</b> Mixed. Specific time segments align with human traits, while others show synthetic artifacts.<br/>"
+        reason += f"<b>Spectral Artifacts:</b> Variable. Localized digital fingerprints were identified at specific timestamps."
+        return reason
+    elif prediction == "SUSPICIOUS":
+        reason = f"<b>FORENSIC VERDICT: SUSPICIOUS (LOW CONFIDENCE)</b><br/><br/>"
+        reason += f"<b>Explanation:</b> The audio shows unusual characteristics that deviate from standard human speech patterns.<br/>"
+        reason += f"<b>Vocal Humanity Score:</b> {vocal_humanity:.1f}% (MEDIUM). Some segments have low confidence or unusual frequency distributions.<br/>"
+        reason += f"<b>Spectral Artifacts:</b> {artifact_intensity:.1f}% (MODERATE). Possible low-quality recording or subtle modification artifacts."
         return reason
     else:
         reason = f"<b>FORENSIC VERDICT: AUTHENTIC (HUMAN)</b><br/><br/>"
-        reason += f"<b>Explanation:</b> The audio displays characteristics consistent with human physiological speech production.<br/>"
-        reason += f"<b>Vocal Humanity Score:</b> {vocal_humanity:.1f}% (HIGH). The semantic embeddings align with natural human vocal tract physics.<br/>"
-        reason += f"<b>Spectral Artifacts:</b> {artifact_intensity:.1f}% (MINIMAL). No significant digital fingerprints or vocoder noise patterns were detected."
+        reason += f"<b>Explanation:</b> The audio displays characteristics consistent with natural human physiological speech production.<br/>"
+        reason += f"<b>Vocal Humanity Score:</b> {vocal_humanity:.1f}% (HIGH). The semantic embeddings align with human vocal tract physics.<br/>"
+        reason += f"<b>Spectral Artifacts:</b> {artifact_intensity:.1f}% (MINIMAL). No significant vocoder fingerprints detected."
         return reason
 
 def create_confidence_bar(confidence: float, prediction: str) -> Drawing:
@@ -42,8 +53,15 @@ def create_confidence_bar(confidence: float, prediction: str) -> Drawing:
     bc.categoryAxis.labels.dy = -5
     bc.categoryAxis.categoryNames = ['']
     
-    is_fake = prediction.upper() in ["FAKE", "POTENTIALLY MODIFIED"]
-    bc.bars[0].fillColor = colors.red if is_fake else colors.green
+    pred = prediction.upper()
+    if pred == "FAKE":
+        bc.bars[0].fillColor = colors.red
+    elif pred == "HYBRID":
+        bc.bars[0].fillColor = colors.orange
+    elif pred == "SUSPICIOUS":
+        bc.bars[0].fillColor = colors.orange
+    else:
+        bc.bars[0].fillColor = colors.green
         
     drawing.add(bc)
     return drawing
@@ -64,8 +82,13 @@ def create_timeline_heatmap(duration: float, segments: list) -> Drawing:
             end = max(0, min(seg.get('end', 0), duration))
             x = (start / duration) * drawing_width
             w = ((end - start) / duration) * drawing_width
-            fake_bar = Rect(x, 15, w, 20, fillColor=colors.red, strokeColor=colors.darkred)
-            drawing.add(fake_bar)
+            
+            pred = seg.get('prediction', 'REAL').upper()
+            color = colors.red if pred == "FAKE" else colors.orange if pred == "SUSPICIOUS" else colors.lightgreen
+            
+            if pred != "REAL":
+                fake_bar = Rect(x, 15, w, 20, fillColor=color, strokeColor=colors.black, strokeWidth=0.5)
+                drawing.add(fake_bar)
             
     # Ticks
     drawing.add(Line(0, 10, 0, 15, strokeColor=colors.black))
@@ -106,15 +129,19 @@ def generate_pdf_report(result: dict, output_path: str):
     # --- 🔍 PREDICTION SECTION ---
     elements.append(Paragraph("🔍 PREDICTION SUMMARY", section_style))
     
+    pred_upper = result['prediction'].upper()
+    verdict = "SYNTHETIC" if pred_upper == "FAKE" else "HYBRID" if pred_upper == "HYBRID" else "SUSPICIOUS" if pred_upper == "SUSPICIOUS" else "AUTHENTIC"
+    status_color = colors.red if pred_upper == "FAKE" else colors.orange if pred_upper in ["HYBRID", "SUSPICIOUS"] else colors.green
+
     prediction_data = [
-        ["Prediction Result:", result['prediction'].upper()],
+        ["Prediction Result:", pred_upper],
         ["Confidence Score:", f"{result['confidence'] * 100:.2f}%"],
-        ["Forensic Verdict:", "SYNTHETIC" if result['prediction'].upper() == "FAKE" else "AUTHENTIC"]
+        ["Forensic Verdict:", verdict]
     ]
     t = Table(prediction_data, colWidths=[150, 300])
     t.setStyle(TableStyle([
         ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
-        ('TEXTCOLOR', (1,0), (1,0), colors.red if result['prediction'].upper() == "FAKE" else colors.green),
+        ('TEXTCOLOR', (1,0), (1,0), status_color),
         ('ALIGN', (0,0), (-1,-1), 'LEFT'),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
         ('LINEBELOW', (0,0), (-1,-1), 0.5, colors.lightgrey),

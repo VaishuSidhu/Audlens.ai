@@ -20,10 +20,10 @@ export function Hero() {
         </div>
 
         <h1 className="text-5xl font-bold tracking-tight sm:text-7xl md:text-8xl">
-          <span className="text-gradient">AudLens AI</span>
+          <span className="text-gradient">AudLens Audio AI</span>
         </h1>
         <p className="mt-4 text-lg font-medium text-foreground/90 sm:text-xl">
-          Audio Deepfake Detection System
+          Advanced Deepfake Detection System
         </p>
         <p className="mx-auto mt-6 max-w-xl text-balance text-sm text-muted-foreground sm:text-base">
           Upload an audio file to detect whether it contains AI-generated fake segments — instantly,

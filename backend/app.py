@@ -36,6 +36,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- SERVE FRONTEND ---
+# This serves the built React/Vite app from the dist/client folder
+FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dist', 'client'))
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+
 ALLOWED_EXTENSIONS = {'.wav', '.mp3', '.ogg'}
 
 @app.on_event("startup")
@@ -157,4 +163,5 @@ async def download_report(background_tasks: BackgroundTasks, file: UploadFile = 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    # Only reload on backend changes, not the whole project
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True, reload_dirs=["backend"])

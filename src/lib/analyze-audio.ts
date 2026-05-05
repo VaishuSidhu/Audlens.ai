@@ -1,19 +1,27 @@
-export type Segment = { start: number; end: number; confidence?: number };
+export type Segment = { 
+  start: number; 
+  end: number; 
+  prediction: "REAL" | "FAKE" | "SUSPICIOUS";
+  confidence: number; 
+  reason?: string;
+};
+
 export type AnalyzeResponse = {
-  prediction: "REAL" | "FAKE";
-  confidence: number; // 0..1 or 0..100
+  prediction: "REAL" | "FAKE" | "HYBRID";
+  confidence: number; 
   segments: Segment[];
+  duration: number;
   forensics?: {
-    spectral_consistency: "HIGH" | "NORMAL";
-    cnn_score: number;
-    frequency_score: number;
+    spectral_consistency: "HIGH" | "LOW";
+    detected_fake_points: number[];
+    human_confidence: number;
   };
   spectrogram_url?: string;
 };
 
-// Configurable endpoint — swap in your real backend here.
-export const ANALYZE_ENDPOINT = "http://localhost:8000/analyze-audio";
-export const DOWNLOAD_ENDPOINT = "http://localhost:8000/download-report";
+// Configurable endpoint — relative paths for deployment
+export const ANALYZE_ENDPOINT = "/analyze-audio";
+export const DOWNLOAD_ENDPOINT = "/download-report";
 
 export async function downloadReport(file: File): Promise<void> {
   const form = new FormData();
@@ -60,24 +68,23 @@ function mockAnalyze(file: File): AnalyzeResponse {
   // Deterministic-ish mock based on filename length.
   const seed = file.name.length;
   const isFake = seed % 2 === 0;
-  const duration = 12; // seconds, assumed for visualization
+  const duration = 12; // seconds
   const segments: Segment[] = isFake
     ? [
-        { start: 2.3, end: 4.1, confidence: 0.94 },
-        { start: 6.8, end: 8.2, confidence: 0.88 },
-        { start: 10.1, end: 11.4, confidence: 0.81 },
+        { start: 2.3, end: 4.1, prediction: "FAKE", confidence: 0.94, reason: "Synthetic artifacts" },
+        { start: 6.8, end: 8.2, prediction: "SUSPICIOUS", confidence: 0.88, reason: "Low spectral consistency" },
+        { start: 10.1, end: 11.4, prediction: "FAKE", confidence: 0.81, reason: "CNN detection" },
       ]
     : [];
   return {
     prediction: isFake ? "FAKE" : "REAL",
     confidence: isFake ? 0.92 : 0.97,
     segments,
-    // @ts-expect-error attach duration for the demo
     duration,
     forensics: {
-      spectral_consistency: isFake ? "HIGH" : "NORMAL",
-      cnn_score: isFake ? 0.88 : 0.12,
-      frequency_score: isFake ? 0.94 : 0.08,
+      spectral_consistency: isFake ? "LOW" : "HIGH",
+      detected_fake_points: isFake ? [2.3, 6.8, 10.1] : [],
+      human_confidence: isFake ? 0.15 : 0.98,
     },
   };
 }

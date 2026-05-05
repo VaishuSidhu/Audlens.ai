@@ -39,9 +39,10 @@ venv/
 .env
 
 # Project specific
-# model/data/
+model/data/
+# Allow model files for deployment
 # model/models/*.h5
 # model/models/*.keras
-# model/images_generated/
-# model/reports_generated/
-# .cache/
+model/images_generated/
+model/reports_generated/
+.cache/
