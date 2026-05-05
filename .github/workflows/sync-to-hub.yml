@@ -14,23 +14,22 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # 1. Setup Git
           git config --global user.email "vaishusidhu@gmail.com"
           git config --global user.name "VaishuSidhu"
           
-          # 2. Create a fresh temporary directory for the clean version
-          mkdir clean_repo
-          cp -r . clean_repo/
-          cd clean_repo
+          # Use a temporary directory
+          TEMP_DIR=$(mktemp -d)
+          cp -r $GITHUB_WORKSPACE/* $TEMP_DIR/
+          cd $TEMP_DIR
           
-          # 3. Remove the heavy data and git history
+          # Remove heavy files and git history
           rm -rf .git
           rm -rf model/data
           rm -rf node_modules
           
-          # 4. Initialize a brand new git repo and push
-          git init
+          # Initialize fresh and push
+          git init -b main
           git add .
           git commit -m "Deployment Sync"
           git remote add hf https://x-token:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/Vaishusid/Audlens
-          git push --force hf master:main
+          git push --force hf main
