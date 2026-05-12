@@ -176,7 +176,7 @@ class ModelLoader:
                         pass
                 _patch_builtin_str_ctypes()
 
-                # Directly rewrite functional.py source code on disk to prevent .as_list() AttributeError on strings
+                # Directly rewrite functional.py source code on disk to prevent .as_list() AttributeError and bypass config validation check
                 try:
                     import keras.src.engine.functional as func_mod
                     func_file = getattr(func_mod, '__file__', None)
@@ -184,10 +184,20 @@ class ModelLoader:
                         with open(func_file, 'r', encoding='utf-8') as f:
                             content = f.read()
                         
+                        changed = False
                         if ".as_list()" in content and "PATCHED_AS_LIST" not in content:
-                            new_content = content.replace("input_data.as_list()", "(input_data.as_list() if hasattr(input_data, 'as_list') else [input_data]) # PATCHED_AS_LIST")
+                            content = content.replace("input_data.as_list()", "(input_data.as_list() if hasattr(input_data, 'as_list') else [input_data]) # PATCHED_AS_LIST")
+                            changed = True
+                        
+                        patch_target = 'raise ValueError("Improperly formatted model config.")'
+                        if patch_target in content and "PATCHED_CONFIG_FMT" not in content:
+                            patch_replacement = "inbound_layer_name, node_index, tensor_index, kwargs = (input_data[0] if isinstance(input_data, (list, tuple)) and len(input_data)>0 else input_data), 0, 0, {}; inbound_layer_name = inbound_layer_name[0] if isinstance(inbound_layer_name, (list, tuple)) else inbound_layer_name; # PATCHED_CONFIG_FMT"
+                            content = content.replace(patch_target, patch_replacement)
+                            changed = True
+                            
+                        if changed:
                             with open(func_file, 'w', encoding='utf-8') as f:
-                                f.write(new_content)
+                                f.write(content)
                             
                             import importlib
                             importlib.reload(func_mod)
