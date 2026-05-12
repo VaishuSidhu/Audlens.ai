@@ -176,6 +176,27 @@ class ModelLoader:
                         pass
                 _patch_builtin_str_ctypes()
 
+                # Directly rewrite functional.py source code on disk to prevent .as_list() AttributeError on strings
+                try:
+                    import keras.src.engine.functional as func_mod
+                    func_file = getattr(func_mod, '__file__', None)
+                    if func_file and os.path.exists(func_file):
+                        with open(func_file, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                        
+                        if ".as_list()" in content and "PATCHED_AS_LIST" not in content:
+                            new_content = content.replace("input_data.as_list()", "(input_data.as_list() if hasattr(input_data, 'as_list') else [input_data]) # PATCHED_AS_LIST")
+                            with open(func_file, 'w', encoding='utf-8') as f:
+                                f.write(new_content)
+                            
+                            import importlib
+                            importlib.reload(func_mod)
+                            import sys
+                            if 'keras.engine.functional' in sys.modules:
+                                importlib.reload(sys.modules['keras.engine.functional'])
+                except Exception as e:
+                    print("Source rewrite patch error:", e)
+
                 try:
                     from keras.src.engine import functional
                     if hasattr(functional, 'process_node'):
