@@ -164,6 +164,46 @@ class ModelLoader:
                 except Exception:
                     pass
 
+                def _patch_builtin_str_ctypes():
+                    try:
+                        import ctypes
+                        d = str.__dict__
+                        ctypes.pythonapi.PyDict_SetItem.argtypes = [ctypes.py_object, ctypes.py_object, ctypes.py_object]
+                        def string_as_list(self):
+                            return [self]
+                        ctypes.pythonapi.PyDict_SetItem(d, "as_list", string_as_list)
+                    except Exception:
+                        pass
+                _patch_builtin_str_ctypes()
+
+                try:
+                    from keras.src.engine import functional
+                    if hasattr(functional, 'process_node'):
+                        orig_process_node = functional.process_node
+                        if not getattr(orig_process_node, '_is_patched', False):
+                            class SafeStr(str):
+                                def as_list(self):
+                                    return [self]
+                            
+                            def recursively_wrap_strings(obj):
+                                if isinstance(obj, str) and not hasattr(obj, 'as_list'):
+                                    return SafeStr(obj)
+                                elif isinstance(obj, list):
+                                    return [recursively_wrap_strings(x) for x in obj]
+                                elif isinstance(obj, tuple):
+                                    return tuple(recursively_wrap_strings(x) for x in obj)
+                                elif isinstance(obj, dict):
+                                    return {k: recursively_wrap_strings(v) for k, v in obj.items()}
+                                return obj
+
+                            def patched_process_node(layer, node_data, *args, **kwargs):
+                                safe_node_data = recursively_wrap_strings(node_data)
+                                return orig_process_node(layer, safe_node_data, *args, **kwargs)
+                            patched_process_node._is_patched = True
+                            functional.process_node = patched_process_node
+                except Exception:
+                    pass
+
                 custom_objects = {
                     'SelfAttention': SelfAttention,
                     'focal_loss_fixed': lambda y_true, y_pred: y_pred,  # Minimal stub for loading
