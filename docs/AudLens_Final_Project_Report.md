@@ -25,7 +25,7 @@ The core of AudLens is a **Multi-Modal Hybrid Architecture** analyzing audio thr
 
 ### 3.3. System Architecture
 ```mermaid
-graph TD
+graph TD ,mbncvbn,mnbnm,nbvc
     A[React Frontend] -->|Upload| B[FastAPI Backend]
     B -->|FFmpeg| C[16kHz Audio Buffer]
     C -->|Inference| D[Dual-Stream Model]
