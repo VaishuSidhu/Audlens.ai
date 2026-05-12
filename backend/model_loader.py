@@ -176,54 +176,55 @@ class ModelLoader:
                         pass
                 _patch_builtin_str_ctypes()
 
-                # Directly rewrite functional.py source code on disk to prevent .as_list() AttributeError on strings
-                try:
-                    import keras.src.engine.functional as func_mod
-                    func_file = getattr(func_mod, '__file__', None)
-                    if func_file and os.path.exists(func_file):
-                        with open(func_file, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                        
-                        if ".as_list()" in content and "PATCHED_AS_LIST" not in content:
-                            new_content = content.replace("input_data.as_list()", "(input_data.as_list() if hasattr(input_data, 'as_list') else [input_data]) # PATCHED_AS_LIST")
-                            with open(func_file, 'w', encoding='utf-8') as f:
-                                f.write(new_content)
-                            
-                            import importlib
-                            importlib.reload(func_mod)
-                            import sys
-                            if 'keras.engine.functional' in sys.modules:
-                                importlib.reload(sys.modules['keras.engine.functional'])
-                except Exception as e:
-                    print("Source rewrite patch error:", e)
-
+                # Normalize node_data connections to perfectly match Keras 2 legacy functional format
                 try:
                     from keras.src.engine import functional
                     if hasattr(functional, 'process_node'):
                         orig_process_node = functional.process_node
                         if not getattr(orig_process_node, '_is_patched', False):
-                            class SafeStr(str):
-                                def as_list(self):
-                                    return [self]
-                            
-                            def recursively_wrap_strings(obj):
-                                if isinstance(obj, str) and not hasattr(obj, 'as_list'):
-                                    return SafeStr(obj)
-                                elif isinstance(obj, list):
-                                    return [recursively_wrap_strings(x) for x in obj]
-                                elif isinstance(obj, tuple):
-                                    return tuple(recursively_wrap_strings(x) for x in obj)
-                                elif isinstance(obj, dict):
-                                    return {k: recursively_wrap_strings(v) for k, v in obj.items()}
-                                return obj
+                            def normalize_node_data(node_data):
+                                if isinstance(node_data, str):
+                                    return [[node_data, 0, 0, {}]]
+                                
+                                if isinstance(node_data, (list, tuple)):
+                                    # If it's a single flat connection descriptor like ['layer_name'] or ['layer_name', 0], expand it
+                                    if len(node_data) > 0 and isinstance(node_data[0], str):
+                                        conn = list(node_data)
+                                        while len(conn) < 3:
+                                            conn.append(0)
+                                        if len(conn) == 3:
+                                            conn.append({})
+                                        return [conn]
+                                    
+                                    normalized = []
+                                    for item in node_data:
+                                        if isinstance(item, str):
+                                            normalized.append([item, 0, 0, {}])
+                                        elif isinstance(item, (list, tuple)):
+                                            conn = list(item)
+                                            if len(conn) > 0 and isinstance(conn[0], (list, tuple)):
+                                                normalized.extend(normalize_node_data(conn))
+                                            elif len(conn) > 0 and isinstance(conn[0], str):
+                                                while len(conn) < 3:
+                                                    conn.append(0)
+                                                if len(conn) == 3:
+                                                    conn.append({})
+                                                normalized.append(conn)
+                                            else:
+                                                normalized.append(conn)
+                                        else:
+                                            normalized.append(item)
+                                    return normalized
+                                return node_data
 
                             def patched_process_node(layer, node_data, *args, **kwargs):
-                                safe_node_data = recursively_wrap_strings(node_data)
+                                safe_node_data = normalize_node_data(node_data)
                                 return orig_process_node(layer, safe_node_data, *args, **kwargs)
+                            
                             patched_process_node._is_patched = True
                             functional.process_node = patched_process_node
-                except Exception:
-                    pass
+                except Exception as e:
+                    print("Process node normalization error:", e)
 
                 custom_objects = {
                     'SelfAttention': SelfAttention,
