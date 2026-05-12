@@ -1,6 +1,28 @@
 import os
 
 
+class DummyDTypePolicy(str):
+    """
+    Acts as a string-like dtype object to resolve Keras 3 serialized DTypePolicy
+    dictionaries when deserialized in legacy Keras environments.
+    """
+    def __new__(cls, *args, **kwargs):
+        name = "float32"
+        if args and isinstance(args[0], str):
+            name = args[0]
+        elif "name" in kwargs:
+            name = kwargs["name"]
+        elif args and isinstance(args[0], dict):
+            name = args[0].get("name", "float32")
+        return super().__new__(cls, name)
+
+    @classmethod
+    def from_config(cls, config):
+        if isinstance(config, dict):
+            return cls(config.get("name", "float32"))
+        return cls(str(config))
+
+
 def _make_compat_batch_norm():
     """
     Returns a BatchNormalization subclass that strips legacy kwargs
@@ -115,6 +137,7 @@ class ModelLoader:
                 custom_objects = {
                     'SelfAttention': SelfAttention,
                     'focal_loss_fixed': lambda y_true, y_pred: y_pred,  # Minimal stub for loading
+                    'DTypePolicy': DummyDTypePolicy,
                 }
                 if CompatBN is not None:
                     custom_objects['BatchNormalization'] = CompatBN
