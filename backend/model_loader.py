@@ -27,6 +27,9 @@ class DummyDTypePolicy(str):
             return cls(config.get("name", "float32"))
         return cls(str(config))
 
+    def get_config(self):
+        return {"name": getattr(self, "name", str(self))}
+
 
 def _make_compat_batch_norm():
     """
