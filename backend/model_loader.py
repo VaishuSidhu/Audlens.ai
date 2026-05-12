@@ -14,7 +14,12 @@ class DummyDTypePolicy(str):
             name = kwargs["name"]
         elif args and isinstance(args[0], dict):
             name = args[0].get("name", "float32")
-        return super().__new__(cls, name)
+        obj = super().__new__(cls, name)
+        obj.name = name
+        obj.compute_dtype = name
+        obj.variable_dtype = name
+        obj.quantization_mode = None
+        return obj
 
     @classmethod
     def from_config(cls, config):
