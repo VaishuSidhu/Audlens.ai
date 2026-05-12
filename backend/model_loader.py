@@ -142,6 +142,28 @@ class ModelLoader:
                         patched_input_from_config._is_patched = True
                         keras.layers.InputLayer.from_config = patched_input_from_config
 
+                # Monkey-patch Layer base constructor globally to pop unsupported legacy kwargs
+                from tensorflow.keras.layers import Layer
+                orig_layer_init = Layer.__init__
+                if not getattr(orig_layer_init, '_is_patched', False):
+                    def patched_layer_init(self, *args, **kwargs):
+                        kwargs.pop('quantization_config', None)
+                        return orig_layer_init(self, *args, **kwargs)
+                    patched_layer_init._is_patched = True
+                    Layer.__init__ = patched_layer_init
+
+                try:
+                    from keras.src.engine.base_layer import BaseLayer
+                    orig_base_init = BaseLayer.__init__
+                    if not getattr(orig_base_init, '_is_patched', False):
+                        def patched_base_init(self, *args, **kwargs):
+                            kwargs.pop('quantization_config', None)
+                            return orig_base_init(self, *args, **kwargs)
+                        patched_base_init._is_patched = True
+                        BaseLayer.__init__ = patched_base_init
+                except Exception:
+                    pass
+
                 custom_objects = {
                     'SelfAttention': SelfAttention,
                     'focal_loss_fixed': lambda y_true, y_pred: y_pred,  # Minimal stub for loading
