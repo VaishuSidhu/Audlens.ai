@@ -146,11 +146,14 @@ class ModelLoader:
                     'SelfAttention': SelfAttention,
                     'focal_loss_fixed': lambda y_true, y_pred: y_pred,  # Minimal stub for loading
                     'DTypePolicy': DummyDTypePolicy,
+                    'DummyDTypePolicy': DummyDTypePolicy,
                 }
                 if CompatBN is not None:
                     custom_objects['BatchNormalization'] = CompatBN
+                    custom_objects['CompatBatchNormalization'] = CompatBN
                 if CompatInput is not None:
                     custom_objects['InputLayer'] = CompatInput
+                    custom_objects['CompatInputLayer'] = CompatInput
 
                 cls._model = keras.models.load_model(
                     model_path, custom_objects=custom_objects, compile=False
