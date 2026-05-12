@@ -30,6 +30,38 @@ def _make_compat_batch_norm():
         return None
 
 
+def _make_compat_input_layer():
+    """
+    Returns an InputLayer subclass that strips legacy kwargs
+    (batch_shape, optional) for compatibility when loading old configs.
+    """
+    try:
+        from tensorflow import keras
+
+        class CompatInputLayer(keras.layers.InputLayer):
+            def __init__(self, **kwargs):
+                if "batch_shape" in kwargs:
+                    shape = kwargs.pop("batch_shape")
+                    if shape and len(shape) > 1 and kwargs.get("input_shape") is None:
+                        kwargs["input_shape"] = shape[1:]
+                kwargs.pop("optional", None)
+                super().__init__(**kwargs)
+
+            @classmethod
+            def from_config(cls, config):
+                cfg = dict(config)
+                if "batch_shape" in cfg:
+                    shape = cfg.pop("batch_shape")
+                    if shape and len(shape) > 1 and cfg.get("input_shape") is None:
+                        cfg["input_shape"] = shape[1:]
+                cfg.pop("optional", None)
+                return cls(**cfg)
+
+        return CompatInputLayer
+    except Exception:
+        return None
+
+
 class ModelLoader:
     _instance = None
     _model = None
@@ -61,8 +93,24 @@ class ModelLoader:
                 # Import custom objects for loading
                 from model.models.hybrid_model import SelfAttention
 
-                # CompatBatchNormalization strips renorm kwargs unsupported by Keras 3.x
+                # Compat layers strip unsupported legacy kwargs
                 CompatBN = _make_compat_batch_norm()
+                CompatInput = _make_compat_input_layer()
+
+                # Monkey-patch InputLayer.from_config globally to handle internal deserialization paths
+                if hasattr(keras.layers.InputLayer, 'from_config'):
+                    orig_input_from_config = keras.layers.InputLayer.from_config
+                    if not getattr(orig_input_from_config, '_is_patched', False):
+                        def patched_input_from_config(config):
+                            cfg = dict(config)
+                            if "batch_shape" in cfg:
+                                shape = cfg.pop("batch_shape")
+                                if shape and len(shape) > 1 and cfg.get("input_shape") is None:
+                                    cfg["input_shape"] = shape[1:]
+                            cfg.pop("optional", None)
+                            return orig_input_from_config(cfg)
+                        patched_input_from_config._is_patched = True
+                        keras.layers.InputLayer.from_config = patched_input_from_config
 
                 custom_objects = {
                     'SelfAttention': SelfAttention,
@@ -70,6 +118,8 @@ class ModelLoader:
                 }
                 if CompatBN is not None:
                     custom_objects['BatchNormalization'] = CompatBN
+                if CompatInput is not None:
+                    custom_objects['InputLayer'] = CompatInput
 
                 cls._model = keras.models.load_model(
                     model_path, custom_objects=custom_objects, compile=False
