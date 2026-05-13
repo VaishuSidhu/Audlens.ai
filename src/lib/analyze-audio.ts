@@ -19,9 +19,10 @@ export type AnalyzeResponse = {
   spectrogram_url?: string;
 };
 
-// Configurable endpoint — relative paths for deployment
-export const ANALYZE_ENDPOINT = "/analyze-audio";
-export const DOWNLOAD_ENDPOINT = "/download-report";
+// Configurable endpoint — use environment variable if provided, otherwise default to relative path
+export const API_BASE = import.meta.env.VITE_API_URL || "";
+export const ANALYZE_ENDPOINT = `${API_BASE}/analyze-audio`;
+export const DOWNLOAD_ENDPOINT = `${API_BASE}/download-report`;
 
 export async function downloadReport(file: File): Promise<void> {
   const form = new FormData();
@@ -61,7 +62,11 @@ export async function analyzeAudio(file: File): Promise<AnalyzeResponse> {
 
 function normalize(r: AnalyzeResponse): AnalyzeResponse {
   const conf = r.confidence > 1 ? r.confidence / 100 : r.confidence;
-  return { ...r, confidence: conf };
+  let specUrl = r.spectrogram_url;
+  if (specUrl && specUrl.startsWith("/") && API_BASE) {
+    specUrl = `${API_BASE}${specUrl}`;
+  }
+  return { ...r, confidence: conf, spectrogram_url: specUrl };
 }
 
 function mockAnalyze(file: File): AnalyzeResponse {

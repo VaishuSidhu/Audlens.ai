@@ -36,18 +36,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- SERVE FRONTEND ---
-# This serves the built React/Vite app from the dist/client folder
-FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dist', 'client'))
-if os.path.exists(FRONTEND_DIR):
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
-
 ALLOWED_EXTENSIONS = {'.wav', '.mp3', '.ogg'}
 
 @app.on_event("startup")
 async def startup_event():
-    # Load model once at server startup
-    ModelLoader.get_model()
+    # Model will be lazy-loaded safely on the first prediction request.
+    # This prevents Uvicorn startup delays and satisfies Render's port-binding health checks instantly.
+    pass
 
 def validate_file_extension(filename: str):
     ext = os.path.splitext(filename)[1].lower()
@@ -160,6 +155,14 @@ async def download_report(background_tasks: BackgroundTasks, file: UploadFile = 
             background_tasks.add_task(remove_temp_file, temp_audio_path)
         if temp_pdf_path:
             background_tasks.add_task(remove_temp_file, temp_pdf_path)
+
+
+# --- SERVE FRONTEND ---
+# This serves the built React/Vite app from the dist/client folder
+FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'dist', 'client'))
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+
 
 if __name__ == "__main__":
     import uvicorn

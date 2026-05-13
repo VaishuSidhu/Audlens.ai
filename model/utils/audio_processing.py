@@ -37,10 +37,18 @@ def augment_audio(y, sr):
         
     return y
 
-# Load pre-trained models once
-PROCESSOR = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base-960h")
-WAV2VEC_MODEL = Wav2Vec2Model.from_pretrained("facebook/wav2vec2-base-960h")
-WAV2VEC_MODEL.eval()
+# Load pre-trained models lazily on first prediction to prevent server import timeouts
+PROCESSOR = None
+WAV2VEC_MODEL = None
+
+def _get_wav2vec_model():
+    global PROCESSOR, WAV2VEC_MODEL
+    if PROCESSOR is None or WAV2VEC_MODEL is None:
+        print("Lazy loading Wav2Vec2 base model...")
+        PROCESSOR = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base-960h")
+        WAV2VEC_MODEL = Wav2Vec2Model.from_pretrained("facebook/wav2vec2-base-960h")
+        WAV2VEC_MODEL.eval()
+    return PROCESSOR, WAV2VEC_MODEL
 
 def extract_dual_features(file_path, augment=False):
     """
@@ -67,9 +75,10 @@ def extract_dual_features(file_path, augment=False):
         spectral_feat = log_mel_spec[..., np.newaxis] # (128, 94, 1)
         
         # --- FEATURE B: Wav2Vec 2.0 (Semantic/Humanity Features) ---
-        inputs = PROCESSOR(y, sampling_rate=16000, return_tensors="pt", padding=True)
+        processor, w2v_model = _get_wav2vec_model()
+        inputs = processor(y, sampling_rate=16000, return_tensors="pt", padding=True)
         with torch.no_grad():
-            outputs = WAV2VEC_MODEL(**inputs)
+            outputs = w2v_model(**inputs)
         semantic_feat = outputs.last_hidden_state.squeeze(0).numpy() # (time_steps, 768)
         
         return spectral_feat, semantic_feat
